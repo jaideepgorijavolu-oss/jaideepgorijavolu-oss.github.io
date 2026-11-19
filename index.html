@@ -1309,7 +1309,11 @@
       scrollProgress: 0,
       dnaSplitFactor: 0,
       mouseX: 0,
-      mouseY: 0
+      mouseY: 0,
+      cityTarget: 1,   // 1 on opening/ending stages, 0 behind content stages
+      camZ: 10.2,
+      camY: 0.1,
+      lookY: 0
     };
 
     let threeGroup = null, threeNodes = [], threePackets = [], threeLines = null, linePositions = null;
@@ -1324,7 +1328,7 @@
         const strand = i % 2;
         const t = (pair / 47) * Math.PI * 5.2 - Math.PI * 2.6;
         const angle = t + strand * Math.PI;
-        const unzipX = splitAmt * (strand === 0 ? -4.8 : 4.8);
+        const unzipX = splitAmt * (strand === 0 ? -2.8 : 2.8);
         const radius = 1.65 + splitAmt * 0.9;
         return {
           x: Math.cos(angle) * radius + unzipX,
@@ -1427,7 +1431,7 @@
       if (!canvas || !window.THREE) return;
 
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); // bloom cost scales with pixel count
       renderer.setSize(window.innerWidth, window.innerHeight);
 
       const scene = new THREE.Scene();
@@ -1470,14 +1474,111 @@
       starPoints = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, opacity: 0.5 }));
       scene.add(starPoints);
 
+      // ===== Neon city skyline + rain + hologram projector (opening & ending stages) =====
+      const FLOOR_Y = -4.8;
+      const small = window.innerWidth < 768;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const cityFog = new THREE.Fog(0x03050a, 20, 62);
+      scene.fog = cityFog;
+      const cityGroup = new THREE.Group();
+      scene.add(cityGroup);
+      const cityMats = {};
+
+      const bCount = small ? 140 : 280;
+      cityMats.building = new THREE.MeshBasicMaterial({ color: 0x070b16, transparent: true });
+      const buildings = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), cityMats.building, bCount);
+      cityMats.sign = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true });
+      const maxSigns = Math.ceil(bCount * 0.25);
+      const signs = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), cityMats.sign, maxSigns);
+      const neon = [new THREE.Color(0xfcee0a), new THREE.Color(0x00f0ff), new THREE.Color(0xff003c)];
+      const winPalette = [[0, 0.7, 0.75], [0.75, 0.7, 0.03], [0.75, 0, 0.18], [0.55, 0.66, 0.75], [0.55, 0.66, 0.75]];
+      const winPos = [], winCol = [];
+      const m4 = new THREE.Matrix4(), noRot = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3();
+      let signIdx = 0;
+      for (let i = 0; i < bCount; i++) {
+        const z = -6 - Math.random() * 40;
+        const x = (Math.random() * 2 - 1) * (9 + -z * 0.95); // widen with depth to fill the frustum
+        const w = 1 + Math.random() * 2.2, d = 1 + Math.random() * 2.2;
+        const h = Math.random() < 0.12 ? 11 + Math.random() * 9 : 2 + Math.random() * 8;
+        buildings.setMatrixAt(i, m4.compose(pos.set(x, FLOOR_Y + h / 2, z), noRot, scl.set(w, h, d)));
+        const fz = z + d / 2 + 0.02; // camera-facing wall
+        for (let wy = FLOOR_Y + 0.5; wy < FLOOR_Y + h - 0.3; wy += 0.45) {
+          for (let wx = x - w / 2 + 0.25; wx < x + w / 2 - 0.15; wx += 0.35) {
+            if (Math.random() < 0.22) { winPos.push(wx, wy, fz); winCol.push(...winPalette[(Math.random() * winPalette.length) | 0]); }
+          }
+        }
+        if (signIdx < maxSigns && Math.random() < 0.22) {
+          const vertical = Math.random() < 0.6;
+          const sw = vertical ? 0.22 : w * 0.8, sh = vertical ? Math.min(h * 0.45, 4) : 0.3;
+          signs.setMatrixAt(signIdx, m4.compose(pos.set(vertical ? x + w / 2 + 0.15 : x, FLOOR_Y + h - sh / 2 - 0.4, fz + 0.05), noRot, scl.set(sw, sh, 0.06)));
+          signs.setColorAt(signIdx, neon[(Math.random() * 3) | 0]);
+          signIdx++;
+        }
+      }
+      signs.count = signIdx;
+      cityGroup.add(buildings, signs);
+      const winGeo = new THREE.BufferGeometry();
+      winGeo.setAttribute('position', new THREE.Float32BufferAttribute(winPos, 3));
+      winGeo.setAttribute('color', new THREE.Float32BufferAttribute(winCol, 3));
+      cityMats.windows = new THREE.PointsMaterial({ size: 0.11, vertexColors: true, transparent: true });
+      cityGroup.add(new THREE.Points(winGeo, cityMats.windows));
+
+      // Red/magenta horizon haze so building silhouettes read against the sky
+      const skyCanvas = document.createElement('canvas');
+      skyCanvas.width = 2; skyCanvas.height = 256;
+      const sctx = skyCanvas.getContext('2d');
+      const skyGrad = sctx.createLinearGradient(0, 0, 0, 256);
+      skyGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      skyGrad.addColorStop(0.55, 'rgba(110,0,90,0.18)');
+      skyGrad.addColorStop(1, 'rgba(255,0,60,0.42)');
+      sctx.fillStyle = skyGrad;
+      sctx.fillRect(0, 0, 2, 256);
+      cityMats.sky = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCanvas), transparent: true, fog: false, depthWrite: false });
+      const sky = new THREE.Mesh(new THREE.PlaneGeometry(170, 30), cityMats.sky);
+      sky.position.set(0, FLOOR_Y + 15, -48);
+      cityGroup.add(sky);
+
+      // Rain: short streaks recycled from the top when they hit the floor
+      const RAIN = reduceMotion ? 0 : (small ? 400 : 900);
+      const rainPos = new Float32Array(RAIN * 6), rainVel = new Float32Array(RAIN);
+      for (let i = 0; i < RAIN; i++) {
+        const x = (Math.random() - 0.5) * 50, y = FLOOR_Y + Math.random() * 20, z = -30 + Math.random() * 38, len = 0.3 + Math.random() * 0.5;
+        rainPos.set([x, y, z, x - 0.04, y - len, z], i * 6);
+        rainVel[i] = 0.18 + Math.random() * 0.16;
+      }
+      const rainGeo = new THREE.BufferGeometry();
+      rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+      cityMats.rain = new THREE.LineBasicMaterial({ color: 0x9fdcff, transparent: true, opacity: 0.32 });
+      const rainLines = new THREE.LineSegments(rainGeo, cityMats.rain);
+      cityGroup.add(rainLines);
+
+      // Hologram projector: floor pad, widening light beam, and a scan line sweeping up the helix
+      const holoGroup = new THREE.Group();
+      scene.add(holoGroup);
+      const additive = { transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false };
+      cityMats.beam = new THREE.MeshBasicMaterial({ color: 0x00f0ff, opacity: 0.02, ...additive });
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 0.9, 11, 40, 1, true), cityMats.beam);
+      beam.position.y = FLOOR_Y + 5.5;
+      cityMats.pad = new THREE.MeshBasicMaterial({ color: 0x00f0ff, opacity: 0.6, ...additive });
+      const pad = new THREE.Mesh(new THREE.RingGeometry(0.7, 1.15, 48), cityMats.pad);
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.y = FLOOR_Y + 0.02;
+      cityMats.scan = new THREE.MeshBasicMaterial({ color: 0x00f0ff, opacity: 0.2, ...additive });
+      const holoScan = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.05), cityMats.scan);
+      holoGroup.add(beam, pad, holoScan);
+
+      let cityAmt = 1, holoAmt = 1, holoFlicker = 0;
+      let camZ = sceneState.camZ, camY = sceneState.camY, lookY = sceneState.lookY;
+
       // Centerpiece Morphing Group
       threeGroup = new THREE.Group();
       scene.add(threeGroup);
 
       // Unlit neon materials: flat bright color is what the bloom pass turns into glow
-      matCyan = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-      matCrimson = new THREE.MeshBasicMaterial({ color: 0xff003c });
-      matAmber = new THREE.MeshBasicMaterial({ color: 0xfcee0a });
+      // transparent so the hero helix can flicker like a hologram; fog off so the city haze never dims it
+      matCyan = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, fog: false });
+      matCrimson = new THREE.MeshBasicMaterial({ color: 0xff003c, transparent: true, fog: false });
+      matAmber = new THREE.MeshBasicMaterial({ color: 0xfcee0a, transparent: true, fog: false });
       matDark = new THREE.MeshPhysicalMaterial({ color: 0x1e293b, roughness: 0.35, metalness: 0.55, clearcoat: 0.5 });
       matPacket = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -1541,9 +1642,14 @@
         const pulseBoost = 1 + sceneState.pulse * 0.45;
 
         // Subtle camera mouse parallax for deep full-screen immersion
+        // plus a slow dolly: pulled back and raised over the city on the ending stage
+        camZ += (sceneState.camZ - camZ) * 0.03;
+        camY += (sceneState.camY - camY) * 0.03;
+        lookY += (sceneState.lookY - lookY) * 0.03;
         camera.position.x += (sceneState.mouseX * 0.55 - camera.position.x) * 0.04;
-        camera.position.y += (-sceneState.mouseY * 0.35 + 0.1 - camera.position.y) * 0.04;
-        camera.lookAt(0, 0, 0);
+        camera.position.y += (-sceneState.mouseY * 0.35 + camY - camera.position.y) * 0.04;
+        camera.position.z = camZ;
+        camera.lookAt(0, lookY, 0);
 
         // Update Main Morphing Sculpture
         for (let i = 0; i < NODE_COUNT; i++) {
@@ -1552,9 +1658,11 @@
           const targetMat = t.role === 'cyan' ? matCyan : (t.role === 'crimson' ? matCrimson : (t.role === 'amber' ? matAmber : matDark));
           if (m.material !== targetMat) m.material = targetMat;
 
-          m.position.x += (t.x - m.position.x) * 0.075;
-          m.position.y += (t.y - m.position.y) * 0.075;
-          m.position.z += (t.z - m.position.z) * 0.075;
+          // Staggered easing: nodes travel at slightly different speeds so shapes assemble in a stream, not a snap
+          const ease = 0.022 + (i % 12) * 0.0025;
+          m.position.x += (t.x - m.position.x) * ease;
+          m.position.y += (t.y - m.position.y) * ease;
+          m.position.z += (t.z - m.position.z) * ease;
           m.scale.x += (t.sx * pulseBoost - m.scale.x) * 0.1;
           m.scale.y += (t.sy * pulseBoost - m.scale.y) * 0.1;
           m.scale.z += (t.sz * pulseBoost - m.scale.z) * 0.1;
@@ -1586,14 +1694,48 @@
         if (starPoints) { starPoints.rotation.y = elapsed * 0.02 + sceneState.scrollProgress * 0.9; }
         if (floorGrid) { floorGrid.position.z = (elapsed * 1.1) % 1.14; }
 
+        // City, rain and projector fade in on opening/ending stages; dark mode only
+        const isLightNow = document.documentElement.classList.contains('studio-light');
+        scene.fog = isLightNow ? null : cityFog;
+        cityAmt += (sceneState.cityTarget - cityAmt) * 0.05;
+        holoAmt += ((sceneState.mode === 'hero' ? 1 : 0) - holoAmt) * 0.08;
+        cityGroup.visible = !isLightNow && cityAmt > 0.01;
+        holoGroup.visible = !isLightNow && holoAmt > 0.01;
+        if (cityGroup.visible) {
+          cityMats.building.opacity = cityMats.sign.opacity = cityMats.windows.opacity = cityMats.sky.opacity = cityAmt;
+          cityMats.rain.opacity = 0.32 * cityAmt;
+          const fall = overclockMode ? 2 : 1;
+          for (let i = 0; i < RAIN; i++) {
+            const k = i * 6, dy = rainVel[i] * fall;
+            rainPos[k + 1] -= dy; rainPos[k + 4] -= dy;
+            if (rainPos[k + 4] < FLOOR_Y) {
+              const len = rainPos[k + 1] - rainPos[k + 4];
+              rainPos[k + 1] = FLOOR_Y + 20; rainPos[k + 4] = FLOOR_Y + 20 - len;
+            }
+          }
+          rainLines.geometry.attributes.position.needsUpdate = true;
+        }
+        if (holoGroup.visible) {
+          holoGroup.position.x = threeGroup.position.x;
+          cityMats.beam.opacity = 0.02 * holoAmt;
+          cityMats.pad.opacity = (0.45 + Math.sin(elapsed * 4) * 0.15) * holoAmt;
+          cityMats.scan.opacity = 0.1 * holoAmt;
+          holoScan.position.y = FLOOR_Y + 1 + ((elapsed * 1.6) % 10);
+        }
+        // Occasional hologram flicker on the hero helix
+        if (holoFlicker > 0) holoFlicker--;
+        else if (!reduceMotion && sceneState.mode === 'hero' && Math.random() < 0.006) holoFlicker = 4 + ((Math.random() * 6) | 0);
+        matCyan.opacity = matCrimson.opacity = matAmber.opacity =
+          sceneState.mode !== 'hero' ? 1 : (holoFlicker > 0 ? 0.3 + Math.random() * 0.3 : 0.92);
+
         const isMobile = window.innerWidth < 1024;
         const desiredX = isMobile ? 0 : sceneState.targetPosX;
-        threeGroup.position.x += (desiredX - threeGroup.position.x) * 0.06;
-        threeGroup.position.y += (sceneState.targetPosY - threeGroup.position.y) * 0.06;
+        threeGroup.position.x += (desiredX - threeGroup.position.x) * 0.035;
+        threeGroup.position.y += (sceneState.targetPosY - threeGroup.position.y) * 0.035;
         const s = isMobile ? sceneState.targetScale * 0.65 : sceneState.targetScale;
-        threeGroup.scale.x += (s - threeGroup.scale.x) * 0.06;
-        threeGroup.scale.y += (s - threeGroup.scale.y) * 0.06;
-        threeGroup.scale.z += (s - threeGroup.scale.z) * 0.06;
+        threeGroup.scale.x += (s - threeGroup.scale.x) * 0.035;
+        threeGroup.scale.y += (s - threeGroup.scale.y) * 0.035;
+        threeGroup.scale.z += (s - threeGroup.scale.z) * 0.035;
 
         const isFrontFacingMode = (
           sceneState.mode === 'neural' ||
@@ -1605,14 +1747,14 @@
           // Keep structured topologies facing the viewer with a gentle subtle sway so they stay immediately recognizable
           const targetY = isDragging ? sceneState.dragRotY : Math.sin(elapsed * 0.32) * 0.18;
           const targetX = isDragging ? sceneState.dragRotX : 0.08 + Math.cos(elapsed * 0.25) * 0.05;
-          threeGroup.rotation.y += (targetY - threeGroup.rotation.y) * 0.05;
-          threeGroup.rotation.x += (targetX - threeGroup.rotation.x) * 0.05;
+          threeGroup.rotation.y += (targetY - threeGroup.rotation.y) * 0.03;
+          threeGroup.rotation.x += (targetX - threeGroup.rotation.x) * 0.03;
         } else {
           if (sceneState.autoOrbit && !isDragging) {
             sceneState.dragRotY += (overclockMode ? 0.0045 : 0.0018) + sceneState.pulse * 0.012;
           }
-          threeGroup.rotation.y += (sceneState.dragRotY + sceneState.scrollProgress * 0.9 - threeGroup.rotation.y) * 0.05;
-          threeGroup.rotation.x += (sceneState.dragRotX - threeGroup.rotation.x) * 0.05;
+          threeGroup.rotation.y += (sceneState.dragRotY + sceneState.scrollProgress * 0.9 - threeGroup.rotation.y) * 0.03;
+          threeGroup.rotation.x += (sceneState.dragRotX - threeGroup.rotation.x) * 0.03;
         }
 
         // Bloom only in dark mode; light mode renders transparent over the page background
@@ -2031,6 +2173,7 @@
       const dockLabel = document.getElementById('dockModeLabel');
       const headerState = document.getElementById('hudHeaderState');
 
+      let lastStageIdx = -1;
       window.addEventListener('scroll', () => {
         const scrollTop = window.scrollY || document.documentElement.scrollTop;
         const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
@@ -2038,14 +2181,26 @@
         bar.style.width = Math.min(100, sceneState.scrollProgress * 100) + '%';
 
         const vh = window.innerHeight;
-        sceneState.dnaSplitFactor = Math.max(0, Math.min(1, scrollTop / (vh * 0.65)));
+        const heroProgress = Math.max(0, Math.min(1, scrollTop / vh));
+        sceneState.dnaSplitFactor = Math.max(0, Math.min(1, scrollTop / (vh * 0.9)));
 
         let currentIdx = 0;
         stageIds.forEach((id, idx) => {
           const el = document.getElementById(id);
           if (el && el.getBoundingClientRect().top <= vh * 0.45) currentIdx = idx;
         });
+        // Mark each stage change with a short glow + RGB-split pulse so the morph reads as a deliberate cut
+        if (currentIdx !== lastStageIdx) {
+          if (lastStageIdx !== -1) sceneState.pulse = Math.max(sceneState.pulse, 0.55);
+          lastStageIdx = currentIdx;
+        }
 
+        // Opening: city fades with scroll. Ending: city back, camera pulls back and rises over the skyline.
+        const isEnding = currentIdx === 4;
+        sceneState.cityTarget = isEnding ? 1 : (currentIdx === 0 ? 1 - heroProgress : 0);
+        sceneState.camZ = isEnding ? 17 : 10.2;
+        sceneState.camY = isEnding ? 3.4 : 0.1;
+        sceneState.lookY = isEnding ? -1.2 : 0;
         counter.textContent = `00${currentIdx + 1} / 005`;
         dots.forEach((d, idx) => d.classList.toggle('active', idx === currentIdx));
 
@@ -2083,9 +2238,9 @@
           sceneState.dnaSplitFactor = 0;
           dockLabel.textContent = 'DNA_HELIX';
           headerState.textContent = 'OPEN_CHANNEL // 2027';
-          sceneState.targetPosX = 0.9;
+          sceneState.targetPosX = 2.4;
           sceneState.targetPosY = 0.0;
-          sceneState.targetScale = 1.25;
+          sceneState.targetScale = 1.0;
         }
       }, { passive: true });
 
