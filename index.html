@@ -1743,9 +1743,15 @@
           sceneState.mode === 'tile' ||
           sceneState.mode === 'aligner'
         );
+        // Orbit modes accumulate unbounded yaw; always turn the short way (≤ half a turn) to the
+        // equivalent target angle, or switching modes unwinds many full spins.
+        const shortestYaw = (target) => {
+          const cur = threeGroup.rotation.y, TAU = Math.PI * 2;
+          return target + TAU * Math.round((cur - target) / TAU);
+        };
         if (isFrontFacingMode) {
           // Keep structured topologies facing the viewer with a gentle subtle sway so they stay immediately recognizable
-          const targetY = isDragging ? sceneState.dragRotY : Math.sin(elapsed * 0.32) * 0.18;
+          const targetY = shortestYaw(isDragging ? sceneState.dragRotY : Math.sin(elapsed * 0.32) * 0.18);
           const targetX = isDragging ? sceneState.dragRotX : 0.08 + Math.cos(elapsed * 0.25) * 0.05;
           threeGroup.rotation.y += (targetY - threeGroup.rotation.y) * 0.03;
           threeGroup.rotation.x += (targetX - threeGroup.rotation.x) * 0.03;
@@ -1753,7 +1759,8 @@
           if (sceneState.autoOrbit && !isDragging) {
             sceneState.dragRotY += (overclockMode ? 0.0045 : 0.0018) + sceneState.pulse * 0.012;
           }
-          threeGroup.rotation.y += (sceneState.dragRotY + sceneState.scrollProgress * 0.9 - threeGroup.rotation.y) * 0.03;
+          const targetY = shortestYaw(sceneState.dragRotY + sceneState.scrollProgress * 0.9);
+          threeGroup.rotation.y += (targetY - threeGroup.rotation.y) * 0.03;
           threeGroup.rotation.x += (sceneState.dragRotX - threeGroup.rotation.x) * 0.03;
         }
 
