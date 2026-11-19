@@ -528,7 +528,7 @@
         </h1>
 
         <p class="hero-anim mt-6 text-base sm:text-lg text-muted max-w-xl leading-relaxed legible">
-          Building <span style="color: var(--ink); font-weight: 600;">AVX2 / CUDA exact genomic aligners</span>, lock-free C++20 vector search engines, and statistically rigorous <span style="color: var(--ink); font-weight: 600;">ML evaluation harnesses</span>. Porting <span class="text-amber font-mono">TILE</span> to CUDA &amp; targeting Summer 2027 SWE / Systems roles.
+          Building <span style="color: var(--ink); font-weight: 600;">exact SIMD genomic aligners</span>, C++20 vector search engines, and statistically rigorous <span style="color: var(--ink); font-weight: 600;">ML evaluation harnesses</span>. Porting <span class="text-amber font-mono">TILE</span> to CUDA &amp; targeting Summer 2027 SWE / Systems roles.
         </p>
 
         <div class="hero-anim mt-8 flex flex-wrap items-center gap-3 ui-interactive">
@@ -561,8 +561,8 @@
 
         <div class="hero-anim mt-12 flex flex-wrap gap-8 sm:gap-10 max-w-3xl legible">
           <div>
-            <div class="font-mecha text-xl sm:text-2xl font-extrabold text-amber">22–23× MM</div>
-            <div class="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">TILE D71 · 2,472 Exact</div>
+            <div class="font-mecha text-xl sm:text-2xl font-extrabold text-amber">500k in 4.4 s</div>
+            <div class="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">TILE · exact · &lt;0.5 GB</div>
           </div>
           <div>
             <div class="font-mecha text-xl sm:text-2xl font-extrabold text-cyan">6,488 QPS</div>
@@ -649,8 +649,8 @@
               <div class="exp-body px-2 sm:pl-14 pb-6">
                 <ul class="space-y-2 text-sm text-muted list-disc pl-4 leading-relaxed">
                   <li>Built <span style="color: var(--ink); font-weight: 600;">catbench</span> (<code class="font-mono text-xs text-cyan">uv run catbench run</code>): 25 queries (19 test, 6 dev), 6 multi-step workflows, ~1,990 graded pairs across 269 catalog listings with 95% bootstrap CIs.</li>
-                  <li>Test split proved <span style="color: var(--ink); font-weight: 600;">text-embedding-3-small</span> beats BM25 across all metrics (R@10 <span class="text-cyan">0.801 vs 0.651</span>, nDCG@10 <span class="text-cyan">0.776 vs 0.631</span>, paired Δ <span class="text-amber">+0.145</span>, MRR <span class="text-cyan">0.921 vs 0.733</span>).</li>
-                  <li>Benchmarked 55 configurations (4 embedding models + BM25 hybrid; 243 tests; CEO reproduced all 55 runs) and proposed a one-line provider-pinning fix for hosting latency variance.</li>
+                  <li>On the test split, <span style="color: var(--ink); font-weight: 600;">text-embedding-3-small</span> beat BM25 on every metric (R@10 <span class="text-cyan">0.801 vs 0.651</span>, nDCG@10 <span class="text-cyan">0.776 vs 0.631</span>, paired Δ <span class="text-amber">+0.145</span>, MRR <span class="text-cyan">0.921 vs 0.733</span>).</li>
+                  <li>Compared 55 configurations (4 embedding models + BM25 hybrids, 243 tests); a newer open-source model clearly beat the current one on held-out queries and was recommended for testing. Traced latency variance to hosting providers, with a one-line pinning fix.</li>
                 </ul>
               </div>
             </div>
@@ -672,8 +672,8 @@
               <div class="exp-body px-2 sm:pl-14 pb-6">
                 <ul class="space-y-2 text-sm text-muted list-disc pl-4 leading-relaxed">
                   <li>Built <span style="color: var(--ink); font-weight: 600;">TILE</span> (C++ / AVX2 SIMD): stores compressed 2-byte tile borders and recomputes only optimal-path tiles, cutting traceback memory from O(mn) to O(mn/T + T²).</li>
-                  <li>D63 benchmark (Xeon Silver 4216, 1 core): exact score agreement across <span style="color: var(--ink); font-weight: 600;">all 2,472 pairs</span> (ONT 1k–500k, SARS-CoV-2, PREFAB-R, BAliBASE 3); beats Myers–Miller by up to 25.4× on ONT-500k (68.0 s vs 1,728 s; 7.0× faster on 8 threads).</li>
-                  <li>Latest D71 (Steps 14–18): <code class="font-mono text-xs text-cyan">dna_twilight_like</code> runs <span class="text-amber font-semibold">22–23× faster</span> than Myers–Miller (up from 5×); porting to CUDA for TWILIGHT.</li>
+                  <li>Aligns real 500k-base Nanopore read pairs <span style="color: var(--ink); font-weight: 600;">exactly in 4.4 s under 0.5 GB</span>, where a full DP matrix would need 250+ GB.</li>
+                  <li>Vectorized the inner loop (32 cells per instruction, up to 3× on proteins) and multithreaded tiles (7× on 8 threads). Benchmarked against Myers–Miller, BiWFA, ksw2, parasail and TALCO: <span class="text-amber font-semibold">5–26× faster than Myers–Miller</span> on DNA, optimal on every pair, fuzz-tested. Now porting to CUDA for TWILIGHT.</li>
                 </ul>
               </div>
             </div>
@@ -715,7 +715,7 @@
                 </div>
               </button>
               <div class="exp-body px-2 sm:pl-14 pb-6">
-                <p class="text-sm text-muted leading-relaxed">Authored computational software engineering evaluation tasks; 3 tasks accepted after expert peer review.</p>
+                <p class="text-sm text-muted leading-relaxed">Authored research-grade computational math and science tasks (reaction-network bifurcations, degenerate equilibria, Toeplitz spectra, first-passage problems); 3 tasks accepted after expert review.</p>
               </div>
             </div>
 
@@ -772,7 +772,7 @@
 
           <div class="flex flex-wrap items-center gap-2">
             <div class="inline-flex flex-wrap gap-1 glass-float p-1.5">
-              <button id="benchTileBtn" type="button" class="bench-tab px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider cyber-btn">TILE D63</button>
+              <button id="benchTileBtn" type="button" class="bench-tab px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider cyber-btn">TILE</button>
               <button id="benchCatbenchBtn" type="button" class="bench-tab px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-muted hover:text-cyan">catbench</button>
               <button id="benchVecsearchBtn" type="button" class="bench-tab px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-muted hover:text-cyan">vecsearch</button>
               <button id="benchAlignerBtn" type="button" class="bench-tab px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-muted hover:text-cyan">SSE2 SW</button>
@@ -888,7 +888,7 @@
         <button type="button" data-cmd="scroll:#stage-01" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>001 // DNA Double-Helix Hero</span><span class="text-dim">HELIX</span></button>
         <button type="button" data-cmd="scroll:#stage-02" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>002 // Helix-Split Work Grid</span><span class="text-dim">WORK</span></button>
         <button type="button" data-cmd="scroll:#stage-03" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>003 // Neural Net Exp Index</span><span class="text-dim">EXP</span></button>
-        <button type="button" data-cmd="scroll:#stage-04" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>004 // D63 &amp; catbench Telemetry</span><span class="text-dim">DATA</span></button>
+        <button type="button" data-cmd="scroll:#stage-04" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>004 // Benchmark Telemetry</span><span class="text-dim">DATA</span></button>
         <button type="button" data-cmd="new-align" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>Run New TILE Alignment Pair</span><span class="text-cyan">TILE</span></button>
         <button type="button" data-cmd="overclock" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>Toggle 2× Simulation Speed</span><span class="text-amber">BOOST</span></button>
         <button type="button" data-cmd="pulse" class="cmd-item w-full text-left px-3 py-2.5 hover:bg-white/10 flex justify-between"><span>Fire 3D Signal Pulse</span><span class="text-crimson">PULSE</span></button>
@@ -931,18 +931,18 @@
         index: '01',
         tag: 'AVX2 / CUDA · DP GRID',
         title: 'TILE Aligner',
-        heroStat: '22–23× MM (D71)',
+        heroStat: '5–26× vs Myers–Miller',
         dockLabel: 'TILE_DP_GRID',
         desc: 'Exact C++ / AVX2 SIMD sequence aligner storing compressed 2-byte tile borders and recomputing only optimal-path tiles — O(mn/T + T²) memory, exact on all 2,472 benchmark pairs.',
         metrics: [
-          { label: 'ONT-50k (D63)', value: '10.6ms vs 137ms' },
-          { label: 'ONT-500k (8T)', value: '7.0× Speedup' },
+          { label: 'ONT-500k pair', value: '4.4 s · <0.5 GB' },
+          { label: 'vs Myers–Miller', value: '5–26× (DNA)' },
           { label: 'Exactness', value: '2,472 / 2,472' }
         ],
         highlights: [
-          'D63 Xeon Silver 4216 (1 core): ONT-1k 0.76 ms (vs MM 3.90 ms), ONT-10k 4.07 ms (vs 43.5 ms), ONT-50k 10.6 ms (vs 137 ms, 11.1 MiB), ONT-500k 68.0 s (vs MM 1,728 s; 610 MiB).',
+          'Aligns real 500k-base Nanopore read pairs exactly in 4.4 s under 0.5 GB; a full DP matrix would need 250+ GB.',
           'Exactness: matched Myers–Miller, BiWFA, parasail, and ksw2 on all 2,472 pairs (ONT, SARS-CoV-2, 1,681 PREFAB-R, 386 BAliBASE 3), while TALCO-XDrop was optimal on only 18–79%.',
-          'D71 (Steps 14–18): dna_twilight_like accelerated to 22–23× faster than Myers–Miller (up from 5×); ×2–×10 scalings hit 6.5–7.2× faster.',
+          'Inner loop vectorized at 32 cells per instruction (up to 3× on proteins); tiles multithreaded for 7× on 8 threads. Single-core, 5–26× faster than Myers–Miller on DNA.',
           'Honest tradeoffs: BiWFA remains 60–75× faster on near-identical SARS-CoV-2 pairs and 3.8× faster at 650k; TILE targets GPU/CUDA integration into TWILIGHT.'
         ],
         stack: ['C++', 'AVX2 SIMD', 'CUDA', 'Multithreading', 'Fuzz Tested', 'TWILIGHT'],
@@ -961,7 +961,7 @@
         title: 'vecsearch',
         heroStat: '6,488 QPS · 0.23ms',
         dockLabel: 'HNSW_3D_GRAPH',
-        desc: 'Lock-free C++20 HNSW vector search engine with hand-written AVX2/NEON SIMD distance kernels, batched software prefetching (+28% QPS), pybind11 bindings, and FastAPI/Docker.',
+        desc: 'C++20 HNSW vector search engine with hand-written AVX2/NEON SIMD distance kernels, batched software prefetching (+28% QPS), pybind11 bindings, and FastAPI/Docker.',
         metrics: [
           { label: 'SIFT1M QPS', value: '6,488 QPS' },
           { label: 'vs Faiss', value: '+20% Faster' },
@@ -995,8 +995,8 @@
         ],
         highlights: [
           'Test split (19 questions, 95% bootstrap CIs): text-embedding-3-small outperformed BM25 on every metric — R@5 (0.663 vs 0.548), R@10 (0.801 vs 0.651), nDCG@10 (0.776 vs 0.631), MRR (0.921 vs 0.733).',
-          'Paired nDCG@10 delta of +0.145 (CI ~0.01–0.29) drove the production decision to keep dense embeddings over keyword search.',
-          'Compared 55 total configurations across 4 embedding models and BM25 hybrids (CEO reproduced all 55 runs) and proposed a one-line provider-pinning fix.'
+          'Paired nDCG@10 delta of +0.145 (95% CI ~0.01–0.29). Found that a newer open-source embedding model clearly beat the current one on held-out queries and recommended it for testing.',
+          'Compared 55 configurations (embedding models and BM25 hybrids), extended scoring to multi-step workflows, showed similarity alone can’t separate “no tool fits” from a weak match, and traced latency variance to hosting providers with a one-line pinning fix.'
         ],
         stack: ['Python', 'BM25', 'Embeddings', 'nDCG / MRR', 'Bootstrap CIs', 'pytest / CI'],
         repoUrl: 'https://github.com/jaideepgorijavolu-oss',
@@ -1057,9 +1057,9 @@
 
     const BENCHMARKS = {
       tile: {
-        title: 'TILE D63 Runtime vs. BiWFA & Myers–Miller (ONT Reads, ms — Lower is Better)',
+        title: 'TILE Runtime vs. BiWFA & Myers–Miller (ONT Reads, ms — Lower is Better)',
         subtitle: 'Xeon Silver 4216, 1 core pinned (AVX2, T=1024), geometric mean of medians. Exact on all 2,472 pairs. Try LOG scale!',
-        badge: '12.9× vs MM (50k) · 22–23× D71',
+        badge: '5–26× vs Myers–Miller · exact',
         labels: ['ONT-1k (100 pairs)', 'ONT-10k (100 pairs)', 'ONT-50k (100 pairs)'],
         unit: 'ms',
         datasets: [
@@ -1068,8 +1068,8 @@
           { label: 'Myers–Miller', data: [3.90, 43.5, 137.0], colorKey: 'muted' }
         ],
         callouts: [
-          { label: 'ONT-500k (T=4096)', value: '68.0 s vs 1,728 s', note: '25.4× vs Myers–Miller · 7.0× on 8 threads' },
-          { label: 'D71 (Steps 14–18)', value: '22–23× faster', note: 'dna_twilight_like vs Myers–Miller (up from 5×)' },
+          { label: 'ONT-500k pair', value: '4.4 s · <0.5 GB', note: 'Full DP matrix would need 250+ GB' },
+          { label: 'Parallel + SIMD', value: '7× on 8 threads', note: '32 cells/instruction · up to 3× on proteins' },
           { label: 'Exactness Verified', value: '2,472 / 2,472', note: 'TALCO-XDrop was optimal on only 18–79%' }
         ]
       },
@@ -1109,8 +1109,8 @@
       },
       aligner: {
         title: 'SSE2-Striped Smith-Waterman Thread Scaling (Protein DB, GCUPS)',
-        subtitle: '350-aa query vs 5,000 proteins (1.72M res, BLOSUM62, Ryzen 9 270, clang -O3). Up to 375× Biopython!',
-        badge: '50.35 GCUPS · 375× Biopython',
+        subtitle: '350-aa query vs 5,000 proteins (1.72M res, BLOSUM62, Ryzen 9 270, clang -O3). 42× Biopython on one core.',
+        badge: '50.4 GCUPS · 42× Biopython (1 core)',
         labels: ['Biopython 1T', 'Scalar C++ 1T', 'SSE2 1T', 'SSE2 2T', 'SSE2 4T', 'SSE2 8T', 'SSE2 16T'],
         unit: 'GCUPS',
         max: 58,
