@@ -389,17 +389,6 @@
     }
     html.studio-light #crtOverlay { display: none; }
 
-    /* Random full-screen glitch frame */
-    body.screen-glitch main, body.screen-glitch header {
-      animation: screenGlitch 0.22s steps(3, end);
-    }
-    @keyframes screenGlitch {
-      0%   { transform: translateX(0); filter: none; clip-path: inset(0 0 0 0); }
-      33%  { transform: translateX(-6px) skewX(-2deg); filter: drop-shadow(-4px 0 0 #00f0ff) drop-shadow(4px 0 0 #ff003c); clip-path: inset(12% 0 38% 0); }
-      66%  { transform: translateX(5px); filter: drop-shadow(3px 0 0 #fcee0a); clip-path: inset(48% 0 6% 0); }
-      100% { transform: translateX(0); filter: none; clip-path: inset(0 0 0 0); }
-    }
-
     /* Boot sequence */
     #bootScreen {
       position: fixed; inset: 0; z-index: 100; background: #03050a;
@@ -411,10 +400,6 @@
     #bootLog .ok { color: #fcee0a; }
     #bootBar { height: 3px; margin-top: 14px; background: rgba(0, 240, 255, 0.15); }
     #bootBar > div { height: 100%; width: 0; background: #fcee0a; box-shadow: 0 0 12px #fcee0a; transition: width 0.2s linear; }
-
-    @media (prefers-reduced-motion: reduce) {
-      body.screen-glitch main, body.screen-glitch header { animation: none !important; }
-    }
 
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -2320,22 +2305,8 @@
       window.addEventListener('keydown', skip, { once: true });
     }
 
-    function initScreenGlitch() {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const fire = () => {
-        if (!document.hidden) {
-          document.body.classList.add('screen-glitch');
-          playSfx('glitch');
-          setTimeout(() => document.body.classList.remove('screen-glitch'), 240);
-        }
-        setTimeout(fire, 9000 + Math.random() * 9000);
-      };
-      setTimeout(fire, 7000);
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
       runBootSequence();
-      initScreenGlitch();
       initTileAlignmentBg();
       initThreeScene();
       initTheme();
